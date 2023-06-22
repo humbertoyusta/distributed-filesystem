@@ -1,0 +1,27 @@
+version: '3.7'
+
+x-chunkserver-defaults: &chunkserver-defaults
+  build:
+    context: ./chunkserver
+    dockerfile: ../docker/Dockerfile-chunkserver
+  networks:
+    - distributed-filesystem
+
+services:
+    chunkserver-1:
+        <<: *chunkserver-defaults
+        ports:
+        - "5001:5000"
+
+    chunkserver-2:
+        <<: *chunkserver-defaults
+        ports:
+        - "5002:5000"
+
+    chunkserver-3:
+        <<: *chunkserver-defaults
+        ports:
+        - "5003:5000"
+
+networks:
+  distributed-filesystem:
