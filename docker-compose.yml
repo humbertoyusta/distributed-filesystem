@@ -1,27 +1,79 @@
 version: '3.7'
 
-x-chunkserver-defaults: &chunkserver-defaults
+x-chunk_server-defaults: &chunk_server-defaults
   build:
-    context: ./chunkserver
-    dockerfile: ../docker/Dockerfile-chunkserver
+    context: ./chunk_server
+    dockerfile: ../docker/Dockerfile-chunk_server
+  environment:
+    - REDIS_HOST=redis
+    - REDIS_PORT=6379
+    - REDIS_PASSWORD=password
+    - REDIS_DB=0
   networks:
     - distributed-filesystem
+  depends_on:
+    - redis
 
 services:
-    chunkserver-1:
-        <<: *chunkserver-defaults
-        ports:
-        - "5001:5000"
+  master:
+    build:
+      context: ./master
+      dockerfile: ../docker/Dockerfile-master
+    environment:
+      - CHUNK_SERVER_NUMBER=3
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=password
+      - REDIS_DB=0
+      - PYTHONUNBUFFERED=1
+    ports:
+      - "5000:5000"
+    networks:
+      - distributed-filesystem
+    volumes:
+      - ./master:/app
+    depends_on:
+      - redis
 
-    chunkserver-2:
-        <<: *chunkserver-defaults
-        ports:
-        - "5002:5000"
+  chunk_server_1:
+    <<: *chunk_server-defaults
+    volumes:
+      - ./chunk_server:/app
+      - chunk_server_1:/chunks
+    ports:
+    - "5001:5000"
 
-    chunkserver-3:
-        <<: *chunkserver-defaults
-        ports:
-        - "5003:5000"
+  chunk_server_2:
+    <<: *chunk_server-defaults
+    volumes:
+      - ./chunk_server:/app
+      - chunk_server_2:/chunks
+    ports:
+    - "5002:5000"
+
+  chunk_server_3:
+    <<: *chunk_server-defaults
+    volumes:
+      - ./chunk_server:/app
+      - chunk_server_3:/chunks
+    ports:
+    - "5003:5000"
+
+  redis:
+    image: redis:7.2-rc2-alpine3.18
+    command: redis-server --appendonly yes --requirepass password
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - distributed-filesystem
 
 networks:
   distributed-filesystem:
+
+volumes:
+  redis-data:
+  chunk_server_1:
+  chunk_server_2:
+  chunk_server_3:
