@@ -72,10 +72,6 @@ def init_file():
 
         # Shift the server list for the next batch
         for _ in range(replication_factor):
-            server = healthy_servers.pop(0)
-            healthy_servers.append(server)
-
-        # Send response
-        return jsonify(chunk_allocations), 200
+            healthy_servers.append(healthy_servers.pop(0))
 
     return jsonify(chunk_allocations), 200

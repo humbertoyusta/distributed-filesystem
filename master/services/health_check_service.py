@@ -14,12 +14,26 @@ def health_check():
             try:
                 requests.get(f'http://{config.CHUNK_SERVER_BASE_NAME}{chunk_server_id}:5000/health')
 
-                if rc.sadd('healthy_chunk_servers_set', chunk_server_id):
-                    rc.rpush('healthy_chunk_servers_list', chunk_server_id)
+                # Watching the 'healthy_chunk_servers_set' key
+                rc.watch('healthy_chunk_servers_set')
+                if chunk_server_id not in rc.smembers('healthy_chunk_servers_set'):
+                    pipeline = rc.pipeline()
+                    pipeline.multi()
+                    pipeline.sadd('healthy_chunk_servers_set', chunk_server_id)
+                    pipeline.rpush('healthy_chunk_servers_list', chunk_server_id)
+                    pipeline.execute()
 
                 print(f'Chunk server {chunk_server_id} is healthy')
             except requests.exceptions.ConnectionError:
-                if rc.srem('healthy_chunk_servers_set', chunk_server_id):
-                    rc.lrem('healthy_chunk_servers_list', 0, chunk_server_id)
+                # Watching the 'healthy_chunk_servers_set' key
+                rc.watch('healthy_chunk_servers_set')
+                if chunk_server_id in rc.smembers('healthy_chunk_servers_set'):
+                    pipeline = rc.pipeline()
+                    pipeline.multi()
+                    pipeline.srem('healthy_chunk_servers_set', chunk_server_id)
+                    pipeline.lrem('healthy_chunk_servers_list', 0, chunk_server_id)
+                    pipeline.execute()
 
                 print(f'Chunk server {chunk_server_id} is unhealthy')
+            finally:
+                rc.unwatch()
