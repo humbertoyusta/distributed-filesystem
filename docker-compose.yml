@@ -13,6 +13,7 @@ x-chunk_server-defaults: &chunk_server-defaults
     - distributed-filesystem
   depends_on:
     - redis
+  restart: always
 
 services:
   master:
@@ -34,6 +35,7 @@ services:
       - ./master:/app
     depends_on:
       - redis
+    restart: always
 
   chunk_server_1:
     <<: *chunk_server-defaults
