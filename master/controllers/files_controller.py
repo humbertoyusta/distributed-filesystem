@@ -104,3 +104,26 @@ def get_chunks(filename):
         chunk_locations[chunk_id] = chunk_servers
 
     return jsonify(chunk_locations), 200
+
+
+@files_blueprint.route('/<filename>', methods=['DELETE'])
+def delete_file(filename):
+    if not validate_filename(filename):
+        return 'Error: Invalid filename.', 400
+
+    # Check if file exists
+    if not rc.exists(f'file:{filename}:size'):
+        return 'Error: File does not exist.', 404
+
+    # Check if all chunks are deleted
+    num_chunks = int(rc.get(f'file:{filename}:chunks').decode())
+    for chunk_id in range(num_chunks):
+        list_key = f'file:{filename}:chunks:{chunk_id}:chunk_servers'
+        if rc.exists(list_key) and rc.llen(list_key) > 0:
+            return 'Error: File cannot be deleted. Some chunks are not deleted.', 400
+
+    # Delete file metadata
+    rc.delete(f'file:{filename}:size')
+    rc.delete(f'file:{filename}:chunks')
+
+    return 'File deleted successfully', 200
