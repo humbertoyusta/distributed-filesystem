@@ -75,3 +75,32 @@ def init_file():
             healthy_servers.append(healthy_servers.pop(0))
 
     return jsonify(chunk_allocations), 200
+
+
+@files_blueprint.route('/<filename>/size', methods=['GET'])
+def get_file_size(filename):
+    if not validate_filename(filename) or not rc.exists(f'file:{filename}:size'):
+        return 'Error: File does not exist.', 404
+    size = rc.get(f'file:{filename}:size')
+    return jsonify({'size': size.decode()}), 200
+
+
+@files_blueprint.route('/<filename>/chunks', methods=['GET'])
+def get_chunks(filename):
+    if not validate_filename(filename):
+        return 'Error: Invalid filename.', 400
+    if not rc.exists(f'file:{filename}:chunks'):
+        return 'Error: File does not exist.', 404
+
+    num_chunks = int(rc.get(f'file:{filename}:chunks'))
+    chunk_locations = {}
+
+    for chunk_id in range(num_chunks):
+        chunk_servers_bytes = rc.lrange(f'file:{filename}:chunks:{chunk_id}:chunk_servers', 0, -1)
+        chunk_servers = [
+            f"{config.CHUNK_SERVER_BASE_NAME}{int(server.decode())}:{config.CHUNK_SERVER_PORT}"
+            for server in chunk_servers_bytes
+        ]
+        chunk_locations[chunk_id] = chunk_servers
+
+    return jsonify(chunk_locations), 200
