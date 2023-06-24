@@ -4,11 +4,6 @@ x-chunk_server-defaults: &chunk_server-defaults
   build:
     context: ./chunk_server
     dockerfile: ../docker/Dockerfile-chunk_server
-  environment:
-    - REDIS_HOST=redis
-    - REDIS_PORT=6379
-    - REDIS_PASSWORD=password
-    - REDIS_DB=0
   networks:
     - distributed-filesystem
   depends_on:
@@ -39,27 +34,45 @@ services:
 
   chunk_server_1:
     <<: *chunk_server-defaults
+    environment:
+      - CHUNK_SERVER_ID=1
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=password
+      - REDIS_DB=0
     volumes:
       - ./chunk_server:/app
       - chunk_server_1:/chunks
     ports:
-    - "5001:5000"
+      - "5001:5000"
 
   chunk_server_2:
     <<: *chunk_server-defaults
+    environment:
+      - CHUNK_SERVER_ID=2
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=password
+      - REDIS_DB=0
     volumes:
       - ./chunk_server:/app
       - chunk_server_2:/chunks
     ports:
-    - "5002:5000"
+      - "5002:5000"
 
   chunk_server_3:
     <<: *chunk_server-defaults
+    environment:
+      - CHUNK_SERVER_ID=2
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=password
+      - REDIS_DB=0
     volumes:
       - ./chunk_server:/app
       - chunk_server_3:/chunks
     ports:
-    - "5003:5000"
+      - "5003:5000"
 
   redis:
     image: redis:7.2-rc2-alpine3.18

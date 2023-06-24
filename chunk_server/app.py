@@ -1,49 +1,56 @@
 from flask import Flask, request, send_file
+import config
 import os
 
 app = Flask(__name__)
-
-# Configure the path where you want to store your chunks
-app.config['UPLOAD_FOLDER'] = '/chunks'
+rc = config.get_redis()
 
 
-@app.route('/store/<chunkname>', methods=['POST'])
-def store_chunk(chunkname: str):
+@app.route('/store/<filename>/<int:chunk_id>', methods=['POST'])
+def store_chunk(filename: str, chunk_id: int):
     if 'file' not in request.files:
         return 'No file part', 400
 
-    os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+    os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
 
     file = request.files['file']
-    file.save(os.path.join(app.config['UPLOAD_FOLDER'], chunkname))
+    filename_without_ext, ext = os.path.splitext(filename)
+    chunkname = f"{filename_without_ext}_{chunk_id}{ext}"
+    file.save(os.path.join(config.UPLOAD_FOLDER, chunkname))
+
+    # Update chunk server information in Redis
+    chunk_server_info = f"{config.CHUNK_SERVER_BASE_NAME}{config.CHUNK_SERVER_ID}:{config.CHUNK_SERVER_PORT}"
+    redis_key = f'file:{filename}:chunks:{chunk_id}:chunk_servers'
+    rc.rpush(redis_key, chunk_server_info)
 
     return 'File stored successfully', 200
 
 
-@app.route('/retrieve/<chunkname>', methods=['GET'])
-def retrieve_chunk(chunkname: str):
+@app.route('/retrieve/<filename>/<int:chunk_id>', methods=['GET'])
+def retrieve_chunk(filename: str, chunk_id: int):
     try:
-        return send_file(os.path.join(app.config['UPLOAD_FOLDER'], chunkname))
+        filename_without_ext, ext = os.path.splitext(filename)
+        chunkname = f"{filename_without_ext}_{chunk_id}{ext}"
+        return send_file(os.path.join(config.UPLOAD_FOLDER, chunkname))
     except FileNotFoundError:
         return 'File not found', 404
 
 
-@app.route('/delete/<chunkname>', methods=['DELETE'])
-def delete_chunk(chunkname: str):
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], chunkname)
+@app.route('/delete/<filename>/<int:chunk_id>', methods=['DELETE'])
+def delete_chunk(filename: str, chunk_id: int):
+    filename_without_ext, ext = os.path.splitext(filename)
+    chunkname = f"{filename_without_ext}_{chunk_id}{ext}"
+    file_path = os.path.join(config.UPLOAD_FOLDER, chunkname)
     try:
+        # Delete file from disk
         os.remove(file_path)
+
+        # Update chunk server information in Redis
+        chunk_server_info = f"{config.CHUNK_SERVER_BASE_NAME}{config.CHUNK_SERVER_ID}:{config.CHUNK_SERVER_PORT}"
+        redis_key = f'file:{filename}:chunks:{chunk_id}:chunk_servers'
+        rc.lrem(redis_key, 0, chunk_server_info)
+
         return 'File deleted successfully', 200
-    except FileNotFoundError:
-        return 'File not found', 404
-
-
-@app.route('/size/<chunkname>', methods=['GET'])
-def size_chunk(chunkname: str):
-    file_path = os.path.join(app.config['UPLOAD_FOLDER'], chunkname)
-    try:
-        size = os.path.getsize(file_path)
-        return str(size), 200
     except FileNotFoundError:
         return 'File not found', 404
 
