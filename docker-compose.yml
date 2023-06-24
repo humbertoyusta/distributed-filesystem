@@ -3,18 +3,46 @@ version: '3.7'
 x-chunk_server-defaults: &chunk_server-defaults
   build:
     context: ./chunk_server
-    dockerfile: ../docker/Dockerfile-chunk_server
+    dockerfile: ../docker/Dockerfile
   networks:
     - distributed-filesystem
   depends_on:
     - redis
   restart: always
 
+x-client-defaults: &client-defaults
+  build:
+    context: ./client
+    dockerfile: ../docker/Dockerfile
+  networks:
+    - distributed-filesystem
+  environment:
+    - MASTER_HOST=master
+    - MASTER_PORT=5000
+  depends_on:
+    - master
+  restart: always
+
 services:
+  loadbalancer:
+    build:
+      context: ./loadbalancer
+      dockerfile: ../docker/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - NUMBER_OF_SERVICES=2
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./loadbalancer:/app
+    networks:
+      - distributed-filesystem
+    restart: always
+
   master:
     build:
       context: ./master
-      dockerfile: ../docker/Dockerfile-master
+      dockerfile: ../docker/Dockerfile
     environment:
       - CHUNK_SERVER_NUMBER=3
       - REDIS_HOST=redis
@@ -23,7 +51,7 @@ services:
       - REDIS_DB=0
       - PYTHONUNBUFFERED=1
     ports:
-      - "5000:5000"
+      - "5001:5000"
     networks:
       - distributed-filesystem
     volumes:
@@ -31,6 +59,20 @@ services:
     depends_on:
       - redis
     restart: always
+
+  client_1:
+    <<: *client-defaults
+    volumes:
+      - ./client:/app
+    ports:
+      - "5002:5000"
+
+  client_2:
+    <<: *client-defaults
+    volumes:
+      - ./client:/app
+    ports:
+      - "5003:5000"
 
   chunk_server_1:
     <<: *chunk_server-defaults
@@ -44,7 +86,7 @@ services:
       - ./chunk_server:/app
       - chunk_server_1:/chunks
     ports:
-      - "5001:5000"
+      - "5004:5000"
 
   chunk_server_2:
     <<: *chunk_server-defaults
@@ -58,7 +100,7 @@ services:
       - ./chunk_server:/app
       - chunk_server_2:/chunks
     ports:
-      - "5002:5000"
+      - "5005:5000"
 
   chunk_server_3:
     <<: *chunk_server-defaults
@@ -72,7 +114,7 @@ services:
       - ./chunk_server:/app
       - chunk_server_3:/chunks
     ports:
-      - "5003:5000"
+      - "5006:5000"
 
   redis:
     image: redis:7.2-rc2-alpine3.18
