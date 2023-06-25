@@ -26,12 +26,18 @@ def store_chunk(filename: str, chunk_id: int):
     return 'File stored successfully', 200
 
 
-@app.route('/retrieve/<filename>/<int:chunk_id>', methods=['GET'])
+@app.route('/retrieve/<filename>/<int:chunk_id>', methods=['GET', 'HEAD'])
 def retrieve_chunk(filename: str, chunk_id: int):
     try:
         filename_without_ext, ext = os.path.splitext(filename)
-        chunkname = f"{filename_without_ext}_{chunk_id}{ext}"
-        return send_file(os.path.join(config.UPLOAD_FOLDER, chunkname))
+        chunk_name = f"{filename_without_ext}_{chunk_id}{ext}"
+        if request.method == 'HEAD':
+            if os.path.exists(os.path.join(config.UPLOAD_FOLDER, chunk_name)):
+                return 'File exists', 200
+            else:
+                return 'File not found', 404
+        elif request.method == 'GET':
+            return send_file(os.path.join(config.UPLOAD_FOLDER, chunk_name))
     except FileNotFoundError:
         return 'File not found', 404
 
