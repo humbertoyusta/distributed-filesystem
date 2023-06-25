@@ -10,34 +10,23 @@ x-chunk_server-defaults: &chunk_server-defaults
     - redis
   restart: always
 
-x-client-defaults: &client-defaults
-  build:
-    context: ./client
-    dockerfile: ../docker/Dockerfile
-  networks:
-    - distributed-filesystem
-  environment:
-    - MASTER_HOST=master
-    - MASTER_PORT=5000
-  depends_on:
-    - master
-  restart: always
-
 services:
-  loadbalancer:
+  client:
     build:
-      context: ./loadbalancer
+      context: ./client
       dockerfile: ../docker/Dockerfile
-    ports:
-      - "5000:5000"
-    environment:
-      - NUMBER_OF_SERVICES=2
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - ./loadbalancer:/app
     networks:
       - distributed-filesystem
+    environment:
+      - MASTER_HOST=master
+      - MASTER_PORT=5000
+    depends_on:
+      - master
     restart: always
+    volumes:
+      - ./client:/app
+    ports:
+      - "5000:5000"
 
   master:
     build:
@@ -59,20 +48,6 @@ services:
     depends_on:
       - redis
     restart: always
-
-  client_1:
-    <<: *client-defaults
-    volumes:
-      - ./client:/app
-    ports:
-      - "5002:5000"
-
-  client_2:
-    <<: *client-defaults
-    volumes:
-      - ./client:/app
-    ports:
-      - "5003:5000"
 
   chunk_server_1:
     <<: *chunk_server-defaults
