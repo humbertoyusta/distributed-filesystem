@@ -60,10 +60,13 @@ def download(filename):
         # Stream each chunk from chunk servers
         for chunk_id, servers in chunk_locations.items():
             for server in servers:
-                retrieve_response = requests.get(f'http://{server}/retrieve/{filename}/{chunk_id}', stream=True)
-                if retrieve_response.status_code == 200:
-                    yield from retrieve_response.iter_content(chunk_size=config.CHUNK_SIZE)
-                    break
+                try:
+                    retrieve_response = requests.get(f'http://{server}/retrieve/{filename}/{chunk_id}', stream=True)
+                    if retrieve_response.status_code == 200:
+                        yield from retrieve_response.iter_content(chunk_size=config.CHUNK_SIZE)
+                        break
+                except requests.exceptions.RequestException:
+                    continue
 
     response = Response(generate(), mimetype='application/octet-stream')
     response.headers.set('Content-Disposition', 'attachment', filename=filename)
@@ -93,10 +96,10 @@ def delete(filename):
             try:
                 delete_response = requests.delete(f'http://{server}/delete/{filename}/{chunk_id}')
 
-                if delete_response.status_code != 200:
+                if delete_response.status_code != 200 and delete_response.status_code != 404:
                     return jsonify({"error": f'Error deleting file chunk {chunk_id} from chunk server {server}'}), 500
             except requests.exceptions.RequestException:
-                return jsonify({"error": f'Error deleting file chunk {chunk_id} from chunk server {server}'}), 500
+                continue
 
     # Delete file from master server
     delete_master_response = requests.delete(f'{config.MASTER_URL}/v1/files/{filename}')
