@@ -3,6 +3,7 @@ from flask import Flask, Blueprint
 from controllers.files_controller import files_blueprint
 from services.health_check_service import health_check
 import config
+from services.replication_service import replication
 
 # Create the Flask app and Redis client
 app = Flask(__name__)
@@ -19,4 +20,5 @@ app.register_blueprint(v1, url_prefix='/v1')
 
 if __name__ == '__main__':
     threading.Thread(target=health_check).start()
+    threading.Thread(target=replication).start()
     app.run(host='0.0.0.0', port=5000, debug=True)

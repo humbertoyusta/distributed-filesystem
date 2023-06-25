@@ -1,3 +1,4 @@
+import requests
 from flask import request, jsonify, Blueprint
 import config
 import re
@@ -73,6 +74,10 @@ def init_file():
         for _ in range(replication_factor):
             healthy_servers.append(healthy_servers.pop(0))
 
+        # Shift the redis list
+        for _ in range(replication_factor):
+            rc.rpush('healthy_chunk_servers_list', rc.lpop('healthy_chunk_servers_list'))
+
     return jsonify(chunk_allocations), 200
 
 
@@ -118,11 +123,32 @@ def delete_file(filename):
     num_chunks = int(rc.get(f'file:{filename}:chunks').decode())
     for chunk_id in range(num_chunks):
         list_key = f'file:{filename}:chunks:{chunk_id}:chunk_servers'
-        if rc.exists(list_key) and rc.llen(list_key) > 0:
-            return jsonify({'error': 'File cannot be deleted. Some chunks are not deleted.'}), 400
+        if rc.exists(list_key):
+            chunk_servers_bytes = rc.lrange(list_key, 0, -1)
+            chunk_servers = [server.decode() for server in chunk_servers_bytes]
+
+            for server in chunk_servers:
+                if preflight_check(server, filename, chunk_id):
+                    return jsonify({'error': 'File cannot be deleted. Some chunks are not deleted.'}), 400
+
+            # If none of the servers contain the chunk, delete the chunk's server list from Redis
+            rc.delete(list_key)
 
     # Delete file metadata
     rc.delete(f'file:{filename}:size')
     rc.delete(f'file:{filename}:chunks')
 
     return jsonify({'message': 'File deleted successfully'}), 200
+
+
+def preflight_check(server, filename, chunk_id):
+    """
+    Perform a preflight check to see if a server has a specific chunk.
+    Return True if the server has the chunk, False otherwise.
+    """
+    try:
+        response = requests.head(f'http://{server}/retrieve/{filename}/{chunk_id}')
+        return response.status_code == 200
+    except requests.exceptions.ConnectionError:
+        return False
+
