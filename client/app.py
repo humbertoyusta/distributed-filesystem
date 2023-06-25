@@ -1,4 +1,4 @@
-from flask import Flask, request, Response
+from flask import Flask, request, Response, jsonify
 import requests
 import os
 import config
@@ -9,7 +9,7 @@ app = Flask(__name__)
 @app.route('/files/<filename>', methods=['POST'])
 def upload(filename: str):
     if 'file' not in request.files:
-        return 'Bad request: No file sent', 400
+        return jsonify({'error': 'Bad request: No file sent'}), 400
 
     file = request.files['file']
 
@@ -22,7 +22,7 @@ def upload(filename: str):
     init_data = {'filename': filename, 'size': file_size}
     init_response = requests.post(f'{config.MASTER_URL}/v1/files/init', json=init_data)
     if init_response.status_code != 200:
-        return f'Error initializing file on master server: {init_response.text}', init_response.status_code
+        return jsonify({"error": f"Error initializing file on master server: {init_response.json()['error']}"}), init_response.status_code
 
     chunk_allocations = init_response.json()
 
@@ -36,9 +36,9 @@ def upload(filename: str):
             store_response = requests.post(f'http://{server}/store/{filename}/{chunk_id}', files=chunk_data)
 
             if store_response.status_code != 200:
-                return f'Error storing file chunk on chunk server : {store_response.text}', 500
+                return jsonify({"error": f"Error storing file chunk on chunk server : {store_response.json()['error']}"}), 500
 
-    return 'File uploaded successfully', 200
+    return jsonify({'message': 'File uploaded successfully'}), 200
 
 
 @app.route('/files/<filename>', methods=['GET'])
@@ -46,14 +46,14 @@ def download(filename):
     # Get chunk locations from master server
     chunk_response = requests.get(f'{config.MASTER_URL}/v1/files/{filename}/chunks')
     if chunk_response.status_code != 200:
-        return f"Error retrieving chunk locations from master server: {chunk_response.text}", chunk_response.status_code
+        return jsonify({"error": f"Error retrieving chunk locations from master server: {chunk_response.json()['error']}"}), chunk_response.status_code
 
     chunk_locations = chunk_response.json()
 
     # Preflight check for all chunk servers
     for chunk_id, servers in chunk_locations.items():
         if not any(is_chunk_available(server, filename, chunk_id) for server in servers):
-            return f"Error: Unable to retrieve chunk {chunk_id} from all chunk servers", 500
+            return jsonify({"error": f"Unable to retrieve chunk {chunk_id} from all chunk servers"}), 500
 
     # Actual streaming
     def generate():
@@ -83,7 +83,7 @@ def delete(filename):
     # Get chunk locations from master server
     chunk_response = requests.get(f'{config.MASTER_URL}/v1/files/{filename}/chunks')
     if chunk_response.status_code != 200:
-        return f"Error retrieving chunk locations from master server: {chunk_response.text}", chunk_response.status_code
+        return jsonify({"error": f"Error retrieving chunk locations from master server: {chunk_response.json()['error']}"}), chunk_response.status_code
 
     chunk_locations = chunk_response.json()
 
@@ -94,16 +94,16 @@ def delete(filename):
                 delete_response = requests.delete(f'http://{server}/delete/{filename}/{chunk_id}')
 
                 if delete_response.status_code != 200:
-                    return f'Error deleting file chunk {chunk_id} from chunk server {server}', 500
+                    return jsonify({"error": f'Error deleting file chunk {chunk_id} from chunk server {server}'}), 500
             except requests.exceptions.RequestException:
-                return f'Error deleting file chunk {chunk_id} from chunk server {server}', 500
+                return jsonify({"error": f'Error deleting file chunk {chunk_id} from chunk server {server}'}), 500
 
     # Delete file from master server
     delete_master_response = requests.delete(f'{config.MASTER_URL}/v1/files/{filename}')
     if delete_master_response.status_code != 200:
-        return f'Error deleting file from master server: {delete_master_response.text}', 500
+        return jsonify({"error": f"Error deleting file from master server: {delete_master_response.json()['error']}"}), 500
 
-    return 'File deleted successfully', 200
+    return jsonify({'message': 'Filed deleted succesfully'}), 200
 
 
 @app.route('/files/<filename>/size', methods=['GET'])
@@ -114,7 +114,7 @@ def size(filename):
 
 @app.route('/health', methods=['GET'])
 def health():
-    return 'OK', 200
+    return jsonify({'message': 'healthy'}), 200
 
 
 if __name__ == '__main__':

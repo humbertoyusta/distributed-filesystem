@@ -1,4 +1,4 @@
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, jsonify
 import config
 import os
 
@@ -9,7 +9,7 @@ rc = config.get_redis()
 @app.route('/store/<filename>/<int:chunk_id>', methods=['POST'])
 def store_chunk(filename: str, chunk_id: int):
     if 'file' not in request.files:
-        return 'No file part', 400
+        return jsonify({'error': 'No file part'}), 400
 
     os.makedirs(config.UPLOAD_FOLDER, exist_ok=True)
 
@@ -23,7 +23,7 @@ def store_chunk(filename: str, chunk_id: int):
     redis_key = f'file:{filename}:chunks:{chunk_id}:chunk_servers'
     rc.rpush(redis_key, chunk_server_info)
 
-    return 'File stored successfully', 200
+    return jsonify({'message': 'File stored successfully'}), 200
 
 
 @app.route('/retrieve/<filename>/<int:chunk_id>', methods=['GET', 'HEAD'])
@@ -33,20 +33,20 @@ def retrieve_chunk(filename: str, chunk_id: int):
         chunk_name = f"{filename_without_ext}_{chunk_id}{ext}"
         if request.method == 'HEAD':
             if os.path.exists(os.path.join(config.UPLOAD_FOLDER, chunk_name)):
-                return 'File exists', 200
+                return jsonify({'message': 'File exists'}), 200
             else:
-                return 'File not found', 404
+                return jsonify({'error': 'File not found'}), 404
         elif request.method == 'GET':
             return send_file(os.path.join(config.UPLOAD_FOLDER, chunk_name))
     except FileNotFoundError:
-        return 'File not found', 404
+        return jsonify({'error': 'File not found'}), 404
 
 
 @app.route('/delete/<filename>/<int:chunk_id>', methods=['DELETE'])
 def delete_chunk(filename: str, chunk_id: int):
     filename_without_ext, ext = os.path.splitext(filename)
-    chunkname = f"{filename_without_ext}_{chunk_id}{ext}"
-    file_path = os.path.join(config.UPLOAD_FOLDER, chunkname)
+    chunk_name = f"{filename_without_ext}_{chunk_id}{ext}"
+    file_path = os.path.join(config.UPLOAD_FOLDER, chunk_name)
     try:
         # Delete file from disk
         os.remove(file_path)
@@ -56,14 +56,14 @@ def delete_chunk(filename: str, chunk_id: int):
         redis_key = f'file:{filename}:chunks:{chunk_id}:chunk_servers'
         rc.lrem(redis_key, 0, chunk_server_info)
 
-        return 'File deleted successfully', 200
+        return jsonify({'message': 'File deleted successfully'}), 200
     except FileNotFoundError:
-        return 'File not found', 404
+        return jsonify({'error': 'File not found'}), 404
 
 
 @app.route('/health', methods=['GET'])
 def health():
-    return 'OK', 200
+    return jsonify({'message': 'healthy'}), 200
 
 
 if __name__ == '__main__':

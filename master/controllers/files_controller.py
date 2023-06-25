@@ -29,18 +29,18 @@ def init_file():
     try:
         data = request.get_json()
     except Exception as e:
-        return 'Error: Unable to parse JSON. ' + str(e), 400
+        return jsonify({'error': 'Unable to parse JSON.', 'details': str(e)}), 400
 
     filename = data['filename']
     filesize = data['size']
 
     # Validate filename
     if not validate_filename(filename):
-        return 'Error: Invalid filename, filename must be alphanumeric and may contain underscores and hyphens.', 400
+        return jsonify({'error': 'Invalid filename, filename must be alphanumeric and may contain underscores and hyphens.'}), 400
 
     # Check if file with same name exists
     if rc.exists(f'file:{filename}:size'):
-        return 'Error: File with same name already exists.', 400
+        return jsonify({'error': 'File with same name already exists.'}), 400
 
     # Calculate number of chunks and create file metadata
     num_chunks = ((filesize + config.CHUNK_SIZE - 1) // config.CHUNK_SIZE) # Round up
@@ -50,7 +50,7 @@ def init_file():
     # Get list of healthy servers
     healthy_server_byte_codes = rc.lrange('healthy_chunk_servers_list', 0, -1)
     if not healthy_server_byte_codes:
-        return 'Error: Not enough healthy servers.', 500
+        return jsonify({'error': 'Not enough healthy servers.'}), 500
 
     healthy_servers = [
         f"{config.CHUNK_SERVER_BASE_NAME}{int(server_byte_code)}:{config.CHUNK_SERVER_PORT}"
@@ -79,7 +79,7 @@ def init_file():
 @files_blueprint.route('/<filename>/size', methods=['GET'])
 def get_file_size(filename):
     if not validate_filename(filename) or not rc.exists(f'file:{filename}:size'):
-        return 'Error: File does not exist.', 404
+        return jsonify({'error': 'File does not exist.'}), 404
     size = rc.get(f'file:{filename}:size')
     return jsonify({'size': size.decode()}), 200
 
@@ -87,9 +87,9 @@ def get_file_size(filename):
 @files_blueprint.route('/<filename>/chunks', methods=['GET'])
 def get_chunks(filename):
     if not validate_filename(filename):
-        return 'Error: Invalid filename.', 400
+        return jsonify({'error': 'Invalid filename.'}), 400
     if not rc.exists(f'file:{filename}:chunks'):
-        return 'Error: File does not exist.', 404
+        return jsonify({'error': 'File does not exist.'}), 404
 
     num_chunks = int(rc.get(f'file:{filename}:chunks'))
     chunk_locations = {}
@@ -108,21 +108,21 @@ def get_chunks(filename):
 @files_blueprint.route('/<filename>', methods=['DELETE'])
 def delete_file(filename):
     if not validate_filename(filename):
-        return 'Error: Invalid filename.', 400
+        return jsonify({'error': 'Invalid filename.'}), 400
 
     # Check if file exists
     if not rc.exists(f'file:{filename}:size'):
-        return 'Error: File does not exist.', 404
+        return jsonify({'error': 'File does not exist.'}), 404
 
     # Check if all chunks are deleted
     num_chunks = int(rc.get(f'file:{filename}:chunks').decode())
     for chunk_id in range(num_chunks):
         list_key = f'file:{filename}:chunks:{chunk_id}:chunk_servers'
         if rc.exists(list_key) and rc.llen(list_key) > 0:
-            return 'Error: File cannot be deleted. Some chunks are not deleted.', 400
+            return jsonify({'error': 'File cannot be deleted. Some chunks are not deleted.'}), 400
 
     # Delete file metadata
     rc.delete(f'file:{filename}:size')
     rc.delete(f'file:{filename}:chunks')
 
-    return 'File deleted successfully', 200
+    return jsonify({'message': 'File deleted successfully'}), 200
