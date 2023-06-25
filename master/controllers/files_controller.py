@@ -1,5 +1,4 @@
 from flask import request, jsonify, Blueprint
-import math
 import config
 import re
 
@@ -44,7 +43,7 @@ def init_file():
         return 'Error: File with same name already exists.', 400
 
     # Calculate number of chunks and create file metadata
-    num_chunks = math.ceil(filesize / config.CHUNK_SIZE)
+    num_chunks = ((filesize + config.CHUNK_SIZE - 1) // config.CHUNK_SIZE) # Round up
     rc.set(f'file:{filename}:size', filesize)
     rc.set(f'file:{filename}:chunks', num_chunks)
 
@@ -98,7 +97,7 @@ def get_chunks(filename):
     for chunk_id in range(num_chunks):
         chunk_servers_bytes = rc.lrange(f'file:{filename}:chunks:{chunk_id}:chunk_servers', 0, -1)
         chunk_servers = [
-            f"{config.CHUNK_SERVER_BASE_NAME}{int(server.decode())}:{config.CHUNK_SERVER_PORT}"
+            server.decode()
             for server in chunk_servers_bytes
         ]
         chunk_locations[chunk_id] = chunk_servers
