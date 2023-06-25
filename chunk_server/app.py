@@ -21,7 +21,7 @@ def store_chunk(filename: str, chunk_id: int):
     # Update chunk server information in Redis
     chunk_server_info = f"{config.CHUNK_SERVER_BASE_NAME}{config.CHUNK_SERVER_ID}:{config.CHUNK_SERVER_PORT}"
     redis_key = f'file:{filename}:chunks:{chunk_id}:chunk_servers'
-    rc.rpush(redis_key, chunk_server_info)
+    rc.sadd(redis_key, chunk_server_info)
 
     return jsonify({'message': 'File stored successfully'}), 200
 
@@ -54,7 +54,7 @@ def delete_chunk(filename: str, chunk_id: int):
         # Update chunk server information in Redis
         chunk_server_info = f"{config.CHUNK_SERVER_BASE_NAME}{config.CHUNK_SERVER_ID}:{config.CHUNK_SERVER_PORT}"
         redis_key = f'file:{filename}:chunks:{chunk_id}:chunk_servers'
-        rc.lrem(redis_key, 0, chunk_server_info)
+        rc.srem(redis_key, 0, chunk_server_info)
 
         return jsonify({'message': 'File deleted successfully'}), 200
     except FileNotFoundError:

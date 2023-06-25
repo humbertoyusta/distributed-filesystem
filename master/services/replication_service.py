@@ -29,7 +29,7 @@ def replication():
         for filename in files:
             num_chunks = int(rc.get(f'file:{filename}:chunks').decode())
             for chunk_id in range(num_chunks):
-                chunk_servers_bytes = rc.lrange(f'file:{filename}:chunks:{chunk_id}:chunk_servers', 0, -1)
+                chunk_servers_bytes = rc.smembers(f'file:{filename}:chunks:{chunk_id}:chunk_servers')
                 chunk_servers = [server.decode() for server in chunk_servers_bytes]
 
                 valid_servers = [server for server in chunk_servers if preflight_check(server, filename, chunk_id)]
@@ -45,7 +45,7 @@ def replication():
 
                     # Remove invalid servers from chunk's server list in Redis
                     for invalid_server in invalid_servers:
-                        rc.lrem(f'file:{filename}:chunks:{chunk_id}:chunk_servers', 0, invalid_server)
+                        rc.srem(f'file:{filename}:chunks:{chunk_id}:chunk_servers', invalid_server)
 
                     # Replicate the chunk to other servers
                     healthy_server_byte_codes = rc.lrange('healthy_chunk_servers_list', 0, -1)
@@ -69,7 +69,7 @@ def replication():
 
                                 if response.status_code == 200:
                                     # If replication was successful, update Redis
-                                    rc.rpush(f'file:{filename}:chunks:{chunk_id}:chunk_servers', server)
+                                    rc.sadd(f'file:{filename}:chunks:{chunk_id}:chunk_servers', server)
 
                                     # Log the replication
                                     print(f'Chunk {chunk_id} of file {filename} has been replicated to {server}')

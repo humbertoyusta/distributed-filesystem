@@ -100,7 +100,7 @@ def get_chunks(filename):
     chunk_locations = {}
 
     for chunk_id in range(num_chunks):
-        chunk_servers_bytes = rc.lrange(f'file:{filename}:chunks:{chunk_id}:chunk_servers', 0, -1)
+        chunk_servers_bytes = rc.smembers(f'file:{filename}:chunks:{chunk_id}:chunk_servers')
         chunk_servers = [
             server.decode()
             for server in chunk_servers_bytes
@@ -122,9 +122,9 @@ def delete_file(filename):
     # Check if all chunks are deleted
     num_chunks = int(rc.get(f'file:{filename}:chunks').decode())
     for chunk_id in range(num_chunks):
-        list_key = f'file:{filename}:chunks:{chunk_id}:chunk_servers'
-        if rc.exists(list_key):
-            chunk_servers_bytes = rc.lrange(list_key, 0, -1)
+        chunk_server_set_key = f'file:{filename}:chunks:{chunk_id}:chunk_servers'
+        if rc.exists(chunk_server_set_key):
+            chunk_servers_bytes = rc.smembers(chunk_server_set_key)
             chunk_servers = [server.decode() for server in chunk_servers_bytes]
 
             for server in chunk_servers:
@@ -132,7 +132,7 @@ def delete_file(filename):
                     return jsonify({'error': 'File cannot be deleted. Some chunks are not deleted.'}), 400
 
             # If none of the servers contain the chunk, delete the chunk's server list from Redis
-            rc.delete(list_key)
+            rc.delete(chunk_server_set_key)
 
     # Delete file metadata
     rc.delete(f'file:{filename}:size')
