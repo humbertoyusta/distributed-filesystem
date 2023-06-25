@@ -80,7 +80,7 @@ services:
   chunk_server_3:
     <<: *chunk_server-defaults
     environment:
-      - CHUNK_SERVER_ID=2
+      - CHUNK_SERVER_ID=3
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - REDIS_PASSWORD=password
