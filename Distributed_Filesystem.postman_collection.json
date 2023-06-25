@@ -1,0 +1,216 @@
+{
+	"info": {
+		"_postman_id": "f6e589e8-aaf9-4b20-aaf7-9f2bfa9c8fe5",
+		"name": "Distributed Filesystem",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "23594628"
+	},
+	"item": [
+		{
+			"name": "master",
+			"item": [
+				{
+					"name": "init_file",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"filename\": \"a.txt\",\n    \"size\": 3000\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "localhost:5001/v1/files/init",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"v1",
+								"files",
+								"init"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get_file_size",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "localhost:5001/v1/files/a.txt/size",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"v1",
+								"files",
+								"a.txt",
+								"size"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get_chunks",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "localhost:5001/v1/files/a.txt/chunks",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"v1",
+								"files",
+								"a.txt",
+								"chunks"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete file",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "localhost:5001/v1/files/a.txt",
+							"host": [
+								"localhost"
+							],
+							"port": "5001",
+							"path": [
+								"v1",
+								"files",
+								"a.txt"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "client",
+			"item": [
+				{
+					"name": "health check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "localhost:5000/health",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"health"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "upload file",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "file",
+									"type": "file",
+									"src": "/Users/humbertoyusta/classes/1C.html"
+								}
+							]
+						},
+						"url": {
+							"raw": "localhost:5000/files/a.txt",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"files",
+								"a.txt"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "download file",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "localhost:5000/files/a.txt",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"files",
+								"a.txt"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "delete file",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "localhost:5000/files/a.txt",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"files",
+								"a.txt"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "get file size",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "localhost:5000/files/a.txt/size",
+							"host": [
+								"localhost"
+							],
+							"port": "5000",
+							"path": [
+								"files",
+								"a.txt",
+								"size"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	]
+}
