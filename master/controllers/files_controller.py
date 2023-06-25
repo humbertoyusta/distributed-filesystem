@@ -15,18 +15,11 @@ def validate_filename(filename):
 
 @files_blueprint.route('/init', methods=['POST'])
 def init_file():
-    """
-        Initializes a file in the system by creating metadata for the file in Redis.
-        Sends to the client a list of servers to store the file's chunks on.
-        @Params:
-            filename: The name of the file to initialize.
-            size: The size of the file to initialize in bytes.
-        @Returns:
-            200 OK if the file was successfully initialized.
-            400 Bad Request if the filename is invalid or a file with the same name already exists.
-            500 Internal Server Error if there are not enough healthy servers to store the file.
-    """
-
+    """Initializes a file in the system by creating metadata for the file in Redis.
+    Sends to the client a list of servers to store the file's chunks on.
+    Request param filename: The name of the file
+    Request param size: The size of the file in bytes
+    :return: A JSON response with a list of servers to store the file's chunks on"""
     try:
         data = request.get_json()
     except Exception as e:
@@ -82,7 +75,10 @@ def init_file():
 
 
 @files_blueprint.route('/<filename>/size', methods=['GET'])
-def get_file_size(filename):
+def get_file_size(filename: str):
+    """Gets the size of a file in the system. Returns 404 if the file does not exist.
+    :param filename: The name of the file
+    :return: A JSON response with the size of the file in bytes"""
     if not validate_filename(filename) or not rc.exists(f'file:{filename}:size'):
         return jsonify({'error': 'File does not exist.'}), 404
     size = rc.get(f'file:{filename}:size')
@@ -90,7 +86,10 @@ def get_file_size(filename):
 
 
 @files_blueprint.route('/<filename>/chunks', methods=['GET'])
-def get_chunks(filename):
+def get_chunks(filename: str):
+    """Gets the locations of all chunks of a file in the system. Returns 404 if the file does not exist.
+    :param filename: The name of the file
+    :return: A JSON response with the locations of all chunks of the file"""
     if not validate_filename(filename):
         return jsonify({'error': 'Invalid filename.'}), 400
     if not rc.exists(f'file:{filename}:chunks'):
@@ -111,7 +110,11 @@ def get_chunks(filename):
 
 
 @files_blueprint.route('/<filename>', methods=['DELETE'])
-def delete_file(filename):
+def delete_file(filename: str):
+    """Deletes a file from the system. Returns 404 if the file does not exist.
+    Returns 400 if the file cannot be deleted because some chunks are not deleted.
+    :param filename: The name of the file
+    :return: A JSON response with the size of the file in bytes"""
     if not validate_filename(filename):
         return jsonify({'error': 'Invalid filename.'}), 400
 
@@ -142,10 +145,8 @@ def delete_file(filename):
 
 
 def preflight_check(server, filename, chunk_id):
-    """
-    Perform a preflight check to see if a server has a specific chunk.
-    Return True if the server has the chunk, False otherwise.
-    """
+    """Perform a preflight check to see if a server has a specific chunk.
+    Return True if the server has the chunk, False otherwise."""
     try:
         response = requests.head(f'http://{server}/retrieve/{filename}/{chunk_id}')
         return response.status_code == 200

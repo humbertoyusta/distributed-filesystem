@@ -8,6 +8,11 @@ rc = config.get_redis()
 
 @app.route('/store/<filename>/<int:chunk_id>', methods=['POST'])
 def store_chunk(filename: str, chunk_id: int):
+    """Store a chunk of a file on the chunk server and updates the chunk server information
+    in Redis telling that the chunk is available on this chunk server.
+    :param filename: The name of the file
+    :param chunk_id: The ID of the chunk in the file
+    :return: A JSON response with a message if the file was stored successfully"""
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
 
@@ -28,6 +33,10 @@ def store_chunk(filename: str, chunk_id: int):
 
 @app.route('/retrieve/<filename>/<int:chunk_id>', methods=['GET', 'HEAD'])
 def retrieve_chunk(filename: str, chunk_id: int):
+    """Retrieve a chunk of a file from the chunk server.
+    :param filename: The name of the file
+    :param chunk_id: The ID of the chunk in the file
+    :return: the requested chunk or a 404 if the chunk does not exist"""
     try:
         filename_without_ext, ext = os.path.splitext(filename)
         chunk_name = f"{filename_without_ext}_{chunk_id}{ext}"
@@ -44,6 +53,11 @@ def retrieve_chunk(filename: str, chunk_id: int):
 
 @app.route('/delete/<filename>/<int:chunk_id>', methods=['DELETE'])
 def delete_chunk(filename: str, chunk_id: int):
+    """Delete a chunk of a file from the chunk server and updates the chunk server information
+    in Redis telling that the chunk is no longer available on this chunk server.
+    :param filename: The name of the file
+    :param chunk_id: The ID of the chunk in the file
+    :return: A JSON response with a message if the file was deleted successfully"""
     filename_without_ext, ext = os.path.splitext(filename)
     chunk_name = f"{filename_without_ext}_{chunk_id}{ext}"
     file_path = os.path.join(config.UPLOAD_FOLDER, chunk_name)
@@ -63,6 +77,8 @@ def delete_chunk(filename: str, chunk_id: int):
 
 @app.route('/health', methods=['GET'])
 def health():
+    """Health check endpoint
+    :return: A JSON response with a message if the chunk server is healthy"""
     return jsonify({'message': 'healthy'}), 200
 
 

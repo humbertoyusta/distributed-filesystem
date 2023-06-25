@@ -8,6 +8,11 @@ app = Flask(__name__)
 
 @app.route('/files/<filename>', methods=['POST'])
 def upload(filename: str):
+    """Upload a file to the distributed file system. The file is split into chunks and stored
+    on the chunk servers. The file is replicated on multiple chunk servers. The master server
+    keeps track of which chunks are stored on which chunk servers.
+    :param filename: The name of the file
+    :return: A JSON response with a message if the file was uploaded successfully"""
     if 'file' not in request.files:
         return jsonify({'error': 'Bad request: No file sent'}), 400
 
@@ -42,7 +47,11 @@ def upload(filename: str):
 
 
 @app.route('/files/<filename>', methods=['GET'])
-def download(filename):
+def download(filename: str):
+    """Download a file from the distributed file system. The file is retrieved from the chunk servers
+    and reassembled into the original file.
+    :param filename: The name of the file
+    :return: A JSON response with a message if the file was downloaded successfully"""
     # Get chunk locations from master server
     chunk_response = requests.get(f'{config.MASTER_URL}/v1/files/{filename}/chunks')
     if chunk_response.status_code != 200:
@@ -74,6 +83,11 @@ def download(filename):
 
 
 def is_chunk_available(server, filename, chunk_id):
+    """Check if a chunk is available on a chunk server by sending a HEAD request to the chunk server
+    :param server: The chunk server (host:port)
+    :param filename: The name of the file
+    :param chunk_id: The id of the chunk in the file
+    :return: True if the chunk is available, False otherwise"""
     try:
         retrieve_response = requests.head(f'http://{server}/retrieve/{filename}/{chunk_id}')
         return retrieve_response.status_code == 200
@@ -82,7 +96,11 @@ def is_chunk_available(server, filename, chunk_id):
 
 
 @app.route('/files/<filename>', methods=['DELETE'])
-def delete(filename):
+def delete(filename: str):
+    """Delete a file from the distributed file system. The file is deleted from the chunk servers.
+    The master server is updated to reflect the deletion.
+    :param filename: The name of the file
+    :return: A JSON response with a message if the file was deleted successfully"""
     # Get chunk locations from master server
     chunk_response = requests.get(f'{config.MASTER_URL}/v1/files/{filename}/chunks')
     if chunk_response.status_code != 200:
@@ -110,13 +128,17 @@ def delete(filename):
 
 
 @app.route('/files/<filename>/size', methods=['GET'])
-def size(filename):
+def size(filename: str):
+    """Get the size of a file from the distributed file system. The size is retrieved from the master server.
+    :param filename: The name of the file
+    :return: A JSON response with the size of the file"""
     size_response = requests.get(f'{config.MASTER_URL}/v1/files/{filename}/size')
     return size_response.json(), size_response.status_code
 
 
 @app.route('/health', methods=['GET'])
 def health():
+    """Health check endpoint"""
     return jsonify({'message': 'healthy'}), 200
 
 

@@ -7,10 +7,8 @@ rc = config.get_redis()
 
 
 def preflight_check(server, filename, chunk_id):
-    """
-    Perform a preflight check to see if a server has a specific chunk.
-    Return True if the server has the chunk, False otherwise.
-    """
+    """Perform a preflight check to see if a server has a specific chunk.
+    Return True if the server has the chunk, False otherwise."""
     try:
         response = requests.head(f'http://{server}/retrieve/{filename}/{chunk_id}')
         return response.status_code == 200
@@ -19,14 +17,17 @@ def preflight_check(server, filename, chunk_id):
 
 
 def replication():
+    """Replicate chunks to other servers if the number of servers that have the chunk is less than the
+    replication factor. It also removes servers that are not responding from the list of servers that
+    have the chunk. Checks one file every 5 seconds."""
     while True:
-        sleep(10)  # Sleep for 60 seconds
-
         # Get list of all files
         files_byte_codes = rc.keys(pattern='file:*:size')
         files = [file.decode().split(':')[1] for file in files_byte_codes]
 
         for filename in files:
+            sleep(5)
+
             num_chunks = int(rc.get(f'file:{filename}:chunks').decode())
             for chunk_id in range(num_chunks):
                 chunk_servers_bytes = rc.smembers(f'file:{filename}:chunks:{chunk_id}:chunk_servers')

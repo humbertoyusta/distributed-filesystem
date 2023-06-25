@@ -4,6 +4,8 @@ import requests
 
 
 def health_check():
+    """Health check service that checks the health of all chunk servers every 10 seconds
+    and updates the 'healthy_chunk_servers_set' and 'healthy_chunk_servers_list' accordingly."""
     rc = config.get_redis()
 
     while True:
